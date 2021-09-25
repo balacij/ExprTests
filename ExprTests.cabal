@@ -32,6 +32,7 @@ library
       src
   build-depends:
       base >=4.7 && <5
+    , containers
   default-language: Haskell2010
 
 executable ExprTests-exe
@@ -44,6 +45,7 @@ executable ExprTests-exe
   build-depends:
       ExprTests
     , base >=4.7 && <5
+    , containers
   default-language: Haskell2010
 
 test-suite ExprTests-test
@@ -57,4 +59,5 @@ test-suite ExprTests-test
   build-depends:
       ExprTests
     , base >=4.7 && <5
+    , containers
   default-language: Haskell2010
