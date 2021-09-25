@@ -100,18 +100,18 @@ instance DefiningExpr (EMExprBox et) et t where
 ~ but its not without its caveats...
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 -}
-class DefiningExpr t ek et where
-    defnExpr :: t ek et -> ek et
+class DefiningExpr2 t ek et where
+    defnExpr2 :: t ek et -> ek et
 
 -- Unfortunately, `ExprBox` and `ModelExprBox` won't work here!
 -- They both have a direct Expr reference in their data type but not in their type variables
--- (where we rely on for that information to make the `DefiningExpr` typeclass generic).
+-- (where we rely on for that information to make the `DefiningExpr2` typeclass generic).
 -- 
--- instance DefiningExpr ExprBox Expr t where
---     defnExpr = _
+-- instance DefiningExpr2 ExprBox Expr t where
+--     defnExpr2 = _
 
-instance DefiningExpr EMExprBox et t where
-    defnExpr = _emExpr
+instance DefiningExpr2 EMExprBox et t where
+    defnExpr2 = _emExpr
 
 {-
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -123,25 +123,25 @@ class DefiningExpr c where
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 -}
 
-instance DefiningExpr' ExprBox' e where
-  defnExpr' = _ebExpr'
+-- with this one, we would have the expr type directly with the expr kind
+class DefiningExpr3 t e where -- This is just the 'getter' part of the Lens. We don't often seem to use the 'setter' part, but it shouldn't be breaking anything here.
+    defnExpr3 :: t e -> e
 
 -- Unfortunately, this original style is incompatible with with the alternative styles for expr-containers
 -- 
--- instance DefiningExpr' (EMExprBox et) e where
---     defnExpr' = _emExpr
+-- instance DefiningExpr3 (EMExprBox et) e where
+--     defnExpr3 = _emExpr
 --
 -- so,
 
 -- we need a new box where the type is purely up to the writer
 data ExprBox' et = ExprBox' {
-    _ebExpr' :: et,
-    _ebName' :: String
-}
+        _ebExpr' :: et,
+        _ebName' :: String
+    }
 
--- with this one, we would have the expr type directly with the expr kind
-class DefiningExpr' t e where -- This is just the 'getter' part of the Lens. We don't often seem to use the 'setter' part, but it shouldn't be breaking anything here.
-    defnExpr' :: t e -> e
+instance DefiningExpr3 ExprBox' e where
+  defnExpr3 = _ebExpr'
 
 eval :: Expr a -> a
 eval (Int n) = n
@@ -173,10 +173,10 @@ p = EMExprBox {
     }
 
 q :: String
-q = eToStr $ defnExpr p
+q = eToStr $ defnExpr2 p
 
 r :: String
-r = meToStr $ express $ defnExpr p
+r = meToStr $ express $ defnExpr2 p
 
 -- basic tests using the 3rd/original style of boxes
 p' :: ExprBox' (Expr Integer)
@@ -186,19 +186,21 @@ p' = ExprBox' {
     }
 
 q' :: String
-q' = eToStr $ defnExpr' p'
+q' = eToStr $ defnExpr3 p'
 
 r' :: String
-r' = meToStr $ express $ defnExpr' p'
+r' = meToStr $ express $ defnExpr3 p'
 
 -- Let's make sure that we can still write nice functions on these
 thirdF :: ExprBox' (Expr a) -> String
-thirdF eb' = meToStr $ express $ defnExpr' eb'
+thirdF eb' = meToStr $ express $ defnExpr3 eb'
 
 r'' :: String
 r'' = thirdF p'
 
--- What about when we want to use functions that accept the TTF constructors?
+{------------------------------------------------------------------------------
+| TTF smart constructors
+------------------------------------------------------------------------------}
 class ExprC r where
     int :: Integer -> r Integer
     str :: String -> r String
