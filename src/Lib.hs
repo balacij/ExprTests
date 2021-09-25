@@ -73,8 +73,25 @@ data EMExprBox et t = EMExprBox {
 }
 
 {------------------------------------------------------------------------------
-| We need a very generic typeclass to represent "grabbing typed expressions from things"
+| An interface to get pseudo-UIDs.
 ------------------------------------------------------------------------------}
+class HasUID a where
+    uid :: a -> String
+
+instance HasUID (ExprBox et) where
+    uid = _ebName
+
+instance HasUID (ModelExprBox et) where
+    uid = _mebName
+
+instance HasUID (EMExprBox et t) where
+    uid = _emName
+
+{------------------------------------------------------------------------------
+| We need a very generic typeclass to represent "grabbing typed expressions from things"
+| (similar to existing "DefiningExpr" typeclass in Drasil) 
+------------------------------------------------------------------------------}
+
 {-
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -117,15 +134,13 @@ class DefiningExpr2 t ek et where
 instance DefiningExpr2 EMExprBox et t where
     defnExpr2 = _emExpr
 
-{-
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+{-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ~ Third attempt, using something ~similar to the current one:
-
-class DefiningExpr c where
-  -- | Provides a 'Lens' to the expression.
-  defnExpr :: Express e => Lens' (c e) e
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
--}
+~ 
+~ class DefiningExpr c where
+~   -- | Provides a 'Lens' to the expression.
+~   defnExpr :: Express e => Lens' (c e) e
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-}
 
 -- with this one, we would have the expr type directly with the expr kind
 class DefiningExpr3 t e where -- This is just the 'getter' part of the Lens. We don't often seem to use the 'setter' part, but it shouldn't be breaking anything here.
@@ -145,31 +160,39 @@ data ExprBox' et = ExprBox' {
     }
 
 instance DefiningExpr3 ExprBox' e where
-  defnExpr3 = _ebExpr'
+    defnExpr3 = _ebExpr'
 
+instance HasUID (ExprBox' et) where
+    uid = _ebName'
+
+-- | Basic evaluation (for `Expr` only!)
 eval :: Expr a -> a
 eval (Int n) = n
 eval (Str s) = s
 eval (Add l r) = eval l + eval r
 eval (Concat h t) = eval h ++ eval t
 
+-- | Helper function for rendering binary operations.
 binParen :: String -> String -> String -> String
 binParen bin l r = "(" ++ l ++ ' ':bin ++ ' ':r ++ ")"
 
+-- | Render `Expr`s as readable Strings
 eToStr :: Expr a -> String
 eToStr (Int n) = show n
-eToStr (Str s) = s
+eToStr (Str s) = '"':s ++ "\""
 eToStr (Add l r) = binParen "+" (eToStr l) (eToStr r)
 eToStr (Concat l r) = binParen "++" (eToStr l) (eToStr r)
+-- TODO: Realistically, should we ever be directly displaying Exprs? Or should we be upgrading to ModelExprs first, and then rendering? I think the latter...
 
+-- | Render `ModelExpr`s as readable Strings
 meToStr :: ModelExpr a -> String
 meToStr (Int' n) = show n
-meToStr (Str' s) = s
+meToStr (Str' s) = '"':s ++ "\""
 meToStr (Add' l r) = binParen "+" (meToStr l) (meToStr r)
 meToStr (Concat' l r) = binParen "++" (meToStr l) (meToStr r)
 meToStr (ExtraConstructor l r) = binParen "=>" (meToStr l) (meToStr r)
 
--- basic tests using the 2nd style of boxes
+-- | Basic test using the 2nd style of boxes
 p :: EMExprBox Expr Integer
 p = EMExprBox {
         _emExpr = Int 1,
@@ -182,7 +205,7 @@ q = eToStr $ defnExpr2 p
 r :: String
 r = meToStr $ express $ defnExpr2 p
 
--- basic tests using the 3rd/original style of boxes
+-- | Basic test using the 3rd/original style of boxes
 p' :: ExprBox' (Expr Integer)
 p' = ExprBox' {
         _ebExpr' = Int 1,
@@ -245,30 +268,37 @@ r''' = thirdF p''
 | Now, we should try to model basic versions of QDs, TMs, IMs, etc
 ------------------------------------------------------------------------------}
 
+{-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~ QDefinitions first
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-}
+
 data QDefinition e where
     -- Essentially the same, without UIDs and chunks from the original Drasil code
     QD :: String -> e -> QDefinition e
 
+-- TODO: ASIDE: Should QDefinitions be moved from drasil-lang to drasil-theory?
+
 instance DefiningExpr3 QDefinition e where
     defnExpr3 (QD _ exp) = exp
+
+instance HasUID (QDefinition e) where
+    uid (QD n _) = n
 
 qd1 :: QDefinition (Expr Integer)
 qd1 = QD "qd1" $ Int 1
 
 -- qd2 :: QDefinition (Expr Integer)
 qd2 :: ExprC r => QDefinition (r Integer)  -- either of these type signatures would work
-qd2 = QD "qd2" $ int 1
+qd2 = QD "qd2" $ int 1 `add` int 3
 
-{-
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+{-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ~ With untyped expressions, we would hide "QDefinition Exprs" using
 ~ a type synonym to write "SimpleQDef" instead.
 ~
 ~ Are we able to create a nice type synonym for "QDefinitions (Expr x)"s?
 ~
 ~ Approx. Goal: https://github.com/JacquesCarette/Drasil/blob/moveDerivToModelExpr/code/drasil-lang/lib/Language/Drasil/Synonyms.hs
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
--}
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-}
 
 -- It looks like we need to add the expression's resultant type as a param
 type SimpleQDef a = QDefinition (Expr a)
@@ -279,7 +309,8 @@ qd3 = QD "qd3" $ int 1
 -- but we can hide it in a wrapper type? The problem with this is that we lose "a" from everywhere
 -- would we be able to resolve that with Typeable usage? Seems bad to do, but it might work.
 data SimpleQDef' = forall a. SimpleQDef' (QDefinition (Expr a))
--- It's ok, but it doesn't work very well with the typeclasses defined above. We'll need alternative variants...
+-- It's ok, but it doesn't work very well with the typeclasses defined above. We either need alternative variants or to restrict
+-- usage of this to just the examples, to make them more readable?
 
 qd3' :: SimpleQDef'
 qd3' = SimpleQDef' $ QD "qd3'" $ int 1
@@ -329,11 +360,9 @@ simpleQDef'ToStr :: SimpleQDef' -> String
 simpleQDef'ToStr (SimpleQDef' qd) = meToStr $ express $ defnExpr3 qd
 
 
-{-
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+{-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ~ Would this alternative wrapper type be friendly to map usage?
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
--}
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-}
 
 simpleQDef'Map :: M.Map String SimpleQDef'
 simpleQDef'Map = M.insert "qd4'" qd4' $ M.singleton "qd3'" qd3'
@@ -341,18 +370,94 @@ simpleQDef'Map = M.insert "qd4'" qd4' $ M.singleton "qd3'" qd3'
 searchedQd4'Str :: String
 searchedQd4'Str = maybe
     (error "somehow didn't find it in map")
-    (\(SimpleQDef' qd) -> meToStr $ express $ defnExpr3 qd) -- writing this is okay and works, but as soon as we try to pass around the qd, it can become buggy
+    simpleQDef'ToStr
+    -- (\(SimpleQDef' qd) -> meToStr $ express $ defnExpr3 qd) -- writing this is okay and works, but as soon as we try to pass around the qd, it can become buggy unless the accepting function accepts every type variable as input
     $ M.lookup "qd4'" simpleQDef'Map
 
 -- TODO: More map-related functions should be reconstructed
 
--- TODO: DataDefinitions replica
+
+{-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~ Ok, now DataDefinitions...
+~
+~ We need to be able to discern between code-usable DDs and non-code-usable.
+~ We do this by forcing DDEs to contain Exprs (code-usable), while DDMEs
+~ contain ModelExprs. Realistically, there's no reason why we need the non-code-usable ones
+~ to always be "ModelExprs", but it doesn't really matter much (especially since we have the TTF constructors :^) ).
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-}
+data DataDefinition where
+    DDE  :: String -> QDefinition (Expr a)      -> DataDefinition
+    DDME :: String -> QDefinition (ModelExpr a) -> DataDefinition
+    -- Alternatively, we can use this below to indicate a DD that shouldn't be used in code generation. TODO: This might be better! 
+    -- DDME :: Express e => String -> QDefinition (e a) -> DataDefinition
+
+instance HasUID DataDefinition where
+    uid (DDE n _)  = n
+    uid (DDME n _) = n
+
+
+{- We need to build a function that grabs QDs. Similar to the existing ones:
+```
+-- | Extracts the 'QDefinition e' from a 'DataDefinition'.
+qdFromDD :: DataDefinition -> Either SimpleQDef ModelQDef
+qdFromDD (DDE  qd _) = Left qd
+qdFromDD (DDME qd _) = Right qd
+
+qdEFromDD :: DataDefinition -> Maybe SimpleQDef
+qdEFromDD (DDE qd _) = Just qd
+qdEFromDD _          = Nothing
+```
+
+Unfortunately, these don't work so well here..
+```
+qdFromDD :: DataDefinition -> Either (QDefinition (Expr a)) (QDefinition (ModelExpr b))
+qdFromDD (DDE  _ qd) = Left qd
+qdFromDD (DDME _ qd) = Right qd
+```
+This attempt causes a type issue. It has no way of matching the type signatures "a" with the "a" from the internally held "qd" from the DataDefinition.
+We could resolve this by creating a type variable for DataDefinitions, but I'm not sure if we would want that. We would then need to have an untyped data wrapper
+similar to QDefinitions above for 
+
+
+Here's another attempt that's foiled because it can't recognize the output type formed by the internal qds of the dds!
+```
+actOnADDsQD :: DataDefinition -> (QDefinition (Expr a) -> r) -> (QDefinition (ModelExpr b) -> r) -> r
+actOnADDsQD (DDE  _ qd) f _ = f qd
+actOnADDsQD (DDME _ qd) _ g = g qd
+```
+-}
+
+ddToStr0 :: Express e a => String -> QDefinition (e a) -> String
+ddToStr0 n qd = "DataDefinition\nName: " ++ n ++ "\nQD: " ++ qd'
+    where qd' = meToStr $ express $ defnExpr3 qd
+
+ddToStr :: DataDefinition -> String
+ddToStr (DDE  name qd) = ddToStr0 name qd
+ddToStr (DDME name qd) = ddToStr0 name qd
+
+dd1e :: DataDefinition
+dd1e = DDE "dd1e" qd2
+
+dd2me :: DataDefinition
+dd2me = DDME "dd2me" qd2
+
+type DataDefnMap = M.Map String DataDefinition
+
+dataDefnMap :: M.Map String DataDefinition
+dataDefnMap =
+      M.insert (uid dd2me) dd2me 
+    $ M.singleton (uid dd1e) dd1e
+
+-- TODO: Continue working with maps
+
 -- TODO: ConstraintSet replica
 -- TODO: "Function Definition" variant of QDefinitions replica
 -- TODO: ModelKinds replica
 -- TODO: IMs replica & general usage
 -- TODO: TMs replica & general usage
 -- TODO: GDs replica & general usage
+-- TODO: ChunkDB replica & general usage
+
 -- TODO: SystemInformation replica & general usage
 
 {------------------------------------------------------------------------------
@@ -360,4 +465,8 @@ searchedQd4'Str = maybe
 ------------------------------------------------------------------------------}
 
 someFunc :: IO ()
-someFunc = putStrLn "someFunc"
+someFunc = do
+    putStrLn "someFunc"
+    putStrLn searchedQd4'Str
+    putStrLn $ ddToStr dd1e
+    putStrLn $ ddToStr dd2me
