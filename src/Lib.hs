@@ -310,7 +310,7 @@ Let's unpack it here:
         express' (SimpleQDef' qd) = express $ defnExpr3 qd
     ```
 
-    GHC recognizes appropriately resolves the type signature `express' :: SimpleQDef' -> p`, and gives the following error for the line above:
+    GHC appropriately resolves the type signature `express' :: SimpleQDef' -> p`, and gives the following error for the line above:
     ```
         • Couldn't match expected type ‘p’ with actual type ‘ModelExpr a’
     ```
