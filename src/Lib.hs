@@ -22,6 +22,7 @@ data Expr a where
     Str :: String -> Expr String
     Add :: Num a => Expr a -> Expr a -> Expr a
     Concat :: Expr String -> Expr String -> Expr String
+    Eq  :: Eq a => Expr a -> Expr a -> Expr Bool
 
 -- The "model"/"display" variant (with 1 extra constructor)
 data ModelExpr a where
@@ -29,6 +30,7 @@ data ModelExpr a where
     Str' :: String -> ModelExpr String
     Add' :: Num a => ModelExpr a -> ModelExpr a -> ModelExpr a
     Concat' :: ModelExpr String -> ModelExpr String -> ModelExpr String
+    Eq'  :: Eq a => ModelExpr a -> ModelExpr a -> ModelExpr Bool
     ExtraConstructor :: Show a => ModelExpr a -> ModelExpr a -> ModelExpr a
 
 {------------------------------------------------------------------------------
@@ -44,6 +46,7 @@ instance Express Expr t where
     express (Str s)      = Str' s
     express (Add l r)    = Add' (express l) (express r)
     express (Concat l r) = Concat' (express l) (express r)
+    express (Eq l r)     = Eq' (express l) (express r)
 
 -- ModelExprs can also be expressed as themselves
 instance Express ModelExpr t where
@@ -171,6 +174,7 @@ eval (Int n) = n
 eval (Str s) = s
 eval (Add l r) = eval l + eval r
 eval (Concat h t) = eval h ++ eval t
+eval (Eq l r) = eval l == eval r
 
 -- | Helper function for rendering binary operations.
 binParen :: String -> String -> String -> String
@@ -181,7 +185,9 @@ eToStr :: Expr a -> String
 eToStr (Int n) = show n
 eToStr (Str s) = '"':s ++ "\""
 eToStr (Add l r) = binParen "+" (eToStr l) (eToStr r)
+eToStr (Eq l r) = binParen "==" (eToStr l) (eToStr r)
 eToStr (Concat l r) = binParen "++" (eToStr l) (eToStr r)
+
 -- TODO: Realistically, should we ever be directly displaying Exprs? Or should we be upgrading to ModelExprs first, and then rendering? I think the latter...
 
 -- | Render `ModelExpr`s as readable Strings
@@ -190,6 +196,7 @@ meToStr (Int' n) = show n
 meToStr (Str' s) = '"':s ++ "\""
 meToStr (Add' l r) = binParen "+" (meToStr l) (meToStr r)
 meToStr (Concat' l r) = binParen "++" (meToStr l) (meToStr r)
+meToStr (Eq' l r) = binParen "==" (meToStr l) (meToStr r)
 meToStr (ExtraConstructor l r) = binParen "=>" (meToStr l) (meToStr r)
 
 -- | Basic test using the 2nd style of boxes
@@ -232,6 +239,7 @@ class ExprC r where
     int :: Integer -> r Integer
     str :: String -> r String
     add :: Num a => r a -> r a -> r a
+    eq  :: Eq a => r a -> r a -> r Bool
     concat :: r String -> r String -> r String
 
 class ModelExprC r where
@@ -240,13 +248,15 @@ class ModelExprC r where
 instance ExprC Expr where
     int i = Int i
     str s = Str s
-    add l r = Add l r 
+    add l r = Add l r
+    eq l r = Eq l r
     concat l r = Concat l r
 
 instance ExprC ModelExpr where
     int i = Int' i
     str s = Str' s
-    add l r = Add' l r 
+    add l r = Add' l r
+    eq l r = Eq' l r
     concat l r = Concat' l r
 
 instance ModelExprC ModelExpr where
@@ -362,6 +372,8 @@ simpleQDef'ToStr (SimpleQDef' qd) = meToStr $ express $ defnExpr3 qd
 
 {-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ~ Would this alternative wrapper type be friendly to map usage?
+~
+~ (Not that we would need a "QDefinition" map though!)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-}
 
 simpleQDef'Map :: M.Map String SimpleQDef'
@@ -448,17 +460,95 @@ dataDefnMap =
       M.insert (uid dd2me) dd2me 
     $ M.singleton (uid dd1e) dd1e
 
--- TODO: Continue working with maps
+ddTest :: IO ()
+ddTest = do
+    putStrLn $ ddToStr dd1e
+    putStrLn $ maybe "bad match" ddToStr $ M.lookup "dd1e" dataDefnMap
+    putStrLn $ maybe "bad match" ddToStr $ M.lookup "dd2me" dataDefnMap
+
+{-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~ RelationConcept replica
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-}
+
+data RelationConcept e where -- TODO: Rename?
+    RC :: String -> e Bool -> RelationConcept (e Bool)
+
+type Relation = ModelExpr Bool
 
 -- TODO: ConstraintSet replica
--- TODO: "Function Definition" variant of QDefinitions replica
+-- TODO: MultiDefn replica
+
+{-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~ ModelKinds replica & general usage
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-}
+
 -- TODO: ModelKinds replica
+
+-- TODO: explain how these are used
+data Concrete
+data Abstract
+
+-- TODO: Explain type variables of ModelKinds
+data ModelKinds c e where
+    EquationalModel :: QDefinition e     -> ModelKinds c e
+    -- TODO: EquationalRealm (using ConstraintSet replica)
+    -- TODO: EquationalConstraints (using MultiDefn replica)
+    DEModel         :: RelationConcept Relation -> ModelKinds Concrete Relation
+    OtherModel      :: RelationConcept e -> ModelKinds Abstract e
+
+-- TODO: Explain type synonym
+type ConcreteModelKind = forall t. ModelKinds Concrete (Expr t)
+type AbstractModelKind = forall t. ModelKinds Abstract (ModelExpr t)
+
+-- TODO: Explain smart constructors
+conEquatModel :: QDefinition (Expr t) -> ModelKinds Concrete (Expr t)
+conEquatModel = EquationalModel
+
+absEquatModel :: QDefinition (ModelExpr t) -> ModelKinds Abstract (ModelExpr t)
+absEquatModel = EquationalModel
+
+deModel :: RelationConcept Relation -> ModelKinds Concrete Relation
+deModel = DEModel
+
+othModel :: RelationConcept (ModelExpr e) -> ModelKinds Abstract (ModelExpr e)
+othModel = OtherModel
+
+{-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~ InstanceModel replica & general usage
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-}
 -- TODO: IMs replica & general usage
+
+data InstanceModel where
+    IM :: String -> ConcreteModelKind -> InstanceModel
+
+{-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~ TheoryModel replica & general usage
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-}
 -- TODO: TMs replica & general usage
+
+data TheoryModel where
+    TM :: String -> AbstractModelKind -> TheoryModel
+
+{-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~ GeneralDefinition replica & general usage
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-}
 -- TODO: GDs replica & general usage
+
+data GeneralDefinition where
+    GD :: String -> AbstractModelKind -> GeneralDefinition
+
+
+{-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~ ChunkDB replica & general usage
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-}
 -- TODO: ChunkDB replica & general usage
 
+
+{-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~ SystemInformation replica & general usage
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-}
 -- TODO: SystemInformation replica & general usage
+
 
 {------------------------------------------------------------------------------
 | Standard Stack template code below
@@ -468,5 +558,4 @@ someFunc :: IO ()
 someFunc = do
     putStrLn "someFunc"
     putStrLn searchedQd4'Str
-    putStrLn $ ddToStr dd1e
-    putStrLn $ ddToStr dd2me
+    ddTest
