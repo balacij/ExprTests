@@ -331,6 +331,9 @@ qd3't = case qd3' of {
             SimpleQDef' qd -> meToStr $ express $ defnExpr3 qd
         }
 
+qd4 :: ExprC r => QDefinition (r String)
+qd4 = QD "qd4" $ concat (str "q") (str "d4")
+
 qd4' :: SimpleQDef'
 qd4' = SimpleQDef' $ QD "qd4'" $ concat (str "q") (str "d4'")
 
@@ -493,49 +496,83 @@ data ModelKinds c e where
     EquationalModel :: QDefinition e     -> ModelKinds c e
     -- TODO: EquationalRealm (using ConstraintSet replica)
     -- TODO: EquationalConstraints (using MultiDefn replica)
-    DEModel         :: RelationConcept Relation -> ModelKinds Concrete Relation
+    DEModel         :: RelationConcept Relation -> ModelKinds Concrete e
     OtherModel      :: RelationConcept e -> ModelKinds Abstract e
 
--- TODO: Explain type synonym
-type ConcreteModelKind = forall t. ModelKinds Concrete (Expr t)
-type AbstractModelKind = forall t. ModelKinds Abstract (ModelExpr t)
+-- TODO: Explain type synonyms - https://en.wikibooks.org/wiki/Haskell/Existentially_quantified_types
+data ConcreteModelKind = forall t. CMK (ModelKinds Concrete (Expr t))
+data AbstractModelKind = forall t. AMK (ModelKinds Abstract (ModelExpr t))
+
+-- TODO: Explain initial smart constructors
+-- conEquatModel :: QDefinition (Expr t) -> ModelKinds Concrete (Expr t)
+-- conEquatModel = EquationalModel
+
+-- absEquatModel :: QDefinition (ModelExpr t) -> ModelKinds Abstract (ModelExpr t)
+-- absEquatModel = EquationalModel
+
+-- deModel :: RelationConcept Relation -> ModelKinds Concrete Relation
+-- deModel = DEModel
+
+-- othModel :: RelationConcept (ModelExpr e) -> ModelKinds Abstract (ModelExpr e)
+-- othModel = OtherModel
 
 -- TODO: Explain smart constructors
-conEquatModel :: QDefinition (Expr t) -> ModelKinds Concrete (Expr t)
-conEquatModel = EquationalModel
+conEquatModel :: QDefinition (Expr t) -> ConcreteModelKind
+conEquatModel = CMK . EquationalModel
 
-absEquatModel :: QDefinition (ModelExpr t) -> ModelKinds Abstract (ModelExpr t)
-absEquatModel = EquationalModel
+absEquatModel :: QDefinition (ModelExpr t) -> AbstractModelKind
+absEquatModel = AMK . EquationalModel
 
-deModel :: RelationConcept Relation -> ModelKinds Concrete Relation
-deModel = DEModel
+deModel :: RelationConcept Relation -> ConcreteModelKind
+deModel = CMK . DEModel
 
-othModel :: RelationConcept (ModelExpr e) -> ModelKinds Abstract (ModelExpr e)
-othModel = OtherModel
+othModel :: RelationConcept (ModelExpr e) -> AbstractModelKind
+othModel = AMK . OtherModel
+
+cmk1 :: ConcreteModelKind
+cmk1 = conEquatModel qd1
+
+cmk4 :: ConcreteModelKind
+cmk4 = conEquatModel qd4
+
+amk4 :: AbstractModelKind
+amk4 = absEquatModel qd4
 
 {-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ~ InstanceModel replica & general usage
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-}
--- TODO: IMs replica & general usage
+-- TODO: general usage
 
 data InstanceModel where
     IM :: String -> ConcreteModelKind -> InstanceModel
 
+im1 :: InstanceModel
+im1 = IM "im1" cmk1
+
+im4 :: InstanceModel
+im4 = IM "im4" cmk4
+
 {-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ~ TheoryModel replica & general usage
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-}
--- TODO: TMs replica & general usage
+-- TODO: general usage
 
 data TheoryModel where
     TM :: String -> AbstractModelKind -> TheoryModel
 
+tm4 :: TheoryModel
+tm4 = TM "tm4" amk4
+
 {-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ~ GeneralDefinition replica & general usage
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-}
--- TODO: GDs replica & general usage
+-- TODO: general usage
 
 data GeneralDefinition where
     GD :: String -> AbstractModelKind -> GeneralDefinition
+
+gd4 :: GeneralDefinition
+gd4 = GD "gd4" amk4
 
 
 {-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
