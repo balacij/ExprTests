@@ -462,8 +462,6 @@ qds = mapMaybe (\x -> actOnADDsQD x (Just . UTQDE) (const Nothing)) dds
 -- >>> map uid qds
 -- ["qd2"]
 
--- >>> map 
-
 -- Basic printer for DataDefinitions of all kinds
 ddToStr0 :: Express e a => String -> String -> QDefinition (e a) -> String
 ddToStr0 n k qd = "DataDefinition\nName: " ++ n ++ "\nKind: " ++ k ++ "\nQD: " ++ qd' ++ "\n"
