@@ -55,6 +55,8 @@ instance Express ModelExpr t where
 
 {------------------------------------------------------------------------------
 | Potential alternative expression containers
+|
+| ( Mostly not important, done purely for learning and experimentation. )
 ------------------------------------------------------------------------------}
 
 -- We might have an Expr container -- note that the Expr type is pushed to the type variable of the container
@@ -535,7 +537,7 @@ data ModelKinds (c :: Abstractness) e where
     DEModel         :: RelationConcept Relation -> ModelKinds Concrete e
     OtherModel      :: RelationConcept e -> ModelKinds Abstract e
 
--- TODO: Explain type synonyms - https://en.wikibooks.org/wiki/Haskell/Existentially_quantified_types
+-- TODO: Explain data containers - https://en.wikibooks.org/wiki/Haskell/Existentially_quantified_types
 data ConcreteModelKind = forall t. CMK (ModelKinds Concrete (Expr t))
 data AbstractModelKind = forall t. AMK (ModelKinds Abstract (ModelExpr t))
 
@@ -552,7 +554,7 @@ data AbstractModelKind = forall t. AMK (ModelKinds Abstract (ModelExpr t))
 -- othModel :: RelationConcept (ModelExpr e) -> ModelKinds Abstract (ModelExpr e)
 -- othModel = OtherModel
 
--- TODO: Explain smart constructors
+-- TODO: Explain smart constructors which use extra containers
 conEquatModel :: QDefinition (Expr t) -> ConcreteModelKind
 conEquatModel = CMK . EquationalModel
 
