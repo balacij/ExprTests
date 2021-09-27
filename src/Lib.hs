@@ -456,10 +456,10 @@ data UnTypedQDefinitionExprs = forall a. UTQDE (QDefinition (Expr a))
 instance HasUID UnTypedQDefinitionExprs where
     uid (UTQDE qd) = uid qd
 
-qds :: [UnTypedQDefinitionExprs] -- A heterogeneous list!!
-qds = mapMaybe (\x -> actOnADDsQD x (Just . UTQDE) (const Nothing)) dds
+qdes :: [UnTypedQDefinitionExprs] -- A heterogeneous list!!
+qdes = mapMaybe (\x -> actOnADDsQD x (Just . UTQDE) (const Nothing)) dds
 
--- >>> map uid qds
+-- >>> map uid qdes
 -- ["qd2"]
 
 -- Basic printer for DataDefinitions of all kinds
