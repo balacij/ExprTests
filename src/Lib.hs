@@ -10,6 +10,7 @@ module Lib where
 
 import Prelude hiding (concat)
 
+import Data.Maybe (mapMaybe)
 import qualified Data.Map as M
 
 {------------------------------------------------------------------------------
@@ -410,7 +411,6 @@ instance HasUID DataDefinition where
     uid (DDE n _)  = n
     uid (DDME n _) = n
 
-
 {- We need to build a function that grabs QDs. Similar to the existing ones:
 ```
 -- | Extracts the 'QDefinition e' from a 'DataDefinition'.
@@ -442,16 +442,39 @@ actOnADDsQD (DDME _ qd) _ g = g qd
 ```
 -}
 
-ddToStr0 :: Express e a => String -> QDefinition (e a) -> String
-ddToStr0 n qd = "DataDefinition\nName: " ++ n ++ "\nQD: " ++ qd'
+-- Finally! With a little bit of reading from https://en.wikibooks.org/wiki/Haskell/Existentially_quantified_types
+-- we are able to at least
+actOnADDsQD :: DataDefinition -> (forall a. QDefinition (Expr a) -> r) -> (forall b. QDefinition (ModelExpr b) -> r) -> r
+actOnADDsQD (DDE _ qd) f _ = f qd
+actOnADDsQD (DDME _ qd) _ f = f qd
+
+dds :: [DataDefinition]
+dds = [ dd2e, dd2me ]
+
+data UnTypedQDefinitionExprs = forall a. UTQDE (QDefinition (Expr a))
+
+instance HasUID UnTypedQDefinitionExprs where
+    uid (UTQDE qd) = uid qd
+
+qds :: [UnTypedQDefinitionExprs] -- A heterogeneous list!!
+qds = mapMaybe (\x -> actOnADDsQD x (Just . UTQDE) (const Nothing)) dds
+
+-- >>> map uid qds
+-- ["qd2"]
+
+-- >>> map 
+
+-- Basic printer for DataDefinitions of all kinds
+ddToStr0 :: Express e a => String -> String -> QDefinition (e a) -> String
+ddToStr0 n k qd = "DataDefinition\nName: " ++ n ++ "\nKind: " ++ k ++ "\nQD: " ++ qd' ++ "\n"
     where qd' = meToStr $ express $ defnExpr3 qd
 
 ddToStr :: DataDefinition -> String
-ddToStr (DDE  name qd) = ddToStr0 name qd
-ddToStr (DDME name qd) = ddToStr0 name qd
+ddToStr (DDE  name qd) = ddToStr0 name "Expr" qd
+ddToStr (DDME name qd) = ddToStr0 name "ModelExpr" qd
 
-dd1e :: DataDefinition
-dd1e = DDE "dd1e" qd2
+dd2e :: DataDefinition
+dd2e = DDE "dd2e" qd2
 
 dd2me :: DataDefinition
 dd2me = DDME "dd2me" qd2
@@ -461,12 +484,12 @@ type DataDefnMap = M.Map String DataDefinition
 dataDefnMap :: M.Map String DataDefinition
 dataDefnMap =
       M.insert (uid dd2me) dd2me 
-    $ M.singleton (uid dd1e) dd1e
+    $ M.singleton (uid dd2e) dd2e
 
 ddTest :: IO ()
 ddTest = do
-    putStrLn $ ddToStr dd1e
-    putStrLn $ maybe "bad match" ddToStr $ M.lookup "dd1e" dataDefnMap
+    putStrLn $ ddToStr dd2e
+    putStrLn $ maybe "bad match" ddToStr $ M.lookup "dd2e" dataDefnMap
     putStrLn $ maybe "bad match" ddToStr $ M.lookup "dd2me" dataDefnMap
 
 {-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -488,11 +511,26 @@ type Relation = ModelExpr Bool
 -- TODO: ModelKinds replica
 
 -- TODO: explain how these are used
-data Concrete
-data Abstract
+data Abstractness = Concrete | Abstract
+
+-- TODO: Justify each type parameter with an explanation.
+-- TODO: NOTE: Subtyping can be "sort of" achieved via:
+{--}
+data AllLists = forall a. Show a => AllList [a]
+
+instance Show AllLists where
+    show (AllList x) = show x
+
+pq :: [AllLists]
+pq = [AllList [1,2,3], AllList [True, False, False]]
+
+allPQShown :: [String]
+allPQShown = map show pq
+{--}
+
 
 -- TODO: Explain type variables of ModelKinds
-data ModelKinds c e where
+data ModelKinds (c :: Abstractness) e where
     EquationalModel :: QDefinition e     -> ModelKinds c e
     -- TODO: EquationalRealm (using ConstraintSet replica)
     -- TODO: EquationalConstraints (using MultiDefn replica)
