@@ -508,26 +508,40 @@ type Relation = ModelExpr Bool
 ~ ModelKinds replica & general usage
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-}
 
--- TODO: ModelKinds replica
+{- First attempt at ModelKinds worked but it still wasn't very good.
+
+
+data Concrete
+data Abstract
+
+-- TODO: Explain type variables of ModelKinds
+data ModelKinds c e where
+    EquationalModel :: QDefinition e     -> ModelKinds c e
+    -- TODO: EquationalRealm (using ConstraintSet replica)
+    -- TODO: EquationalConstraints (using MultiDefn replica)
+    DEModel         :: RelationConcept Relation -> ModelKinds Concrete Relation
+    OtherModel      :: RelationConcept e -> ModelKinds Abstract e
+
+-- TODO: Explain type synonym
+type ConcreteModelKind = forall t. ModelKinds Concrete (Expr t)
+type AbstractModelKind = forall t. ModelKinds Abstract (ModelExpr t)
+
+-- TODO: Explain smart constructors
+conEquatModel :: QDefinition (Expr t) -> ModelKinds Concrete (Expr t)
+conEquatModel = EquationalModel
+
+absEquatModel :: QDefinition (ModelExpr t) -> ModelKinds Abstract (ModelExpr t)
+absEquatModel = EquationalModel
+
+deModel :: RelationConcept Relation -> ModelKinds Concrete Relation
+deModel = DEModel
+
+othModel :: RelationConcept (ModelExpr e) -> ModelKinds Abstract (ModelExpr e)
+othModel = OtherModel
+-}
 
 -- TODO: explain how these are used
 data Abstractness = Concrete | Abstract
-
--- TODO: Justify each type parameter with an explanation.
--- TODO: NOTE: Subtyping can be "sort of" achieved via:
-{--}
-data AllLists = forall a. Show a => AllList [a]
-
-instance Show AllLists where
-    show (AllList x) = show x
-
-pq :: [AllLists]
-pq = [AllList [1,2,3], AllList [True, False, False]]
-
-allPQShown :: [String]
-allPQShown = map show pq
-{--}
-
 
 -- TODO: Explain type variables of ModelKinds
 data ModelKinds (c :: Abstractness) e where
