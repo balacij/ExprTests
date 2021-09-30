@@ -25,11 +25,35 @@ source-repository head
 
 library
   exposed-modules:
+      Lang.ChunkDB
+      Lang.DefiningExpr
+      Lang.Expr
+      Lang.Exprs
+      Lang.GenericClasses
+      Lang.Maps
+      Lang.ModelExpr
+      Lang.QDefinition
+      Lang.RelationConcept
+      Lang.SystemInformation
       Lib
+      SubtypeLike
+      Theory.DataDefinition
+      Theory.GeneralDefinition
+      Theory.InstanceModel
+      Theory.ModelKinds
+      Theory.TheoryModel
   other-modules:
       Paths_ExprTests
   hs-source-dirs:
       src
+  default-extensions:
+      GADTs
+      MultiParamTypeClasses
+      FlexibleInstances
+      PolyKinds
+      DataKinds
+      RankNTypes
+      NoMonomorphismRestriction
   build-depends:
       base >=4.7 && <5
     , containers
@@ -41,6 +65,14 @@ executable ExprTests-exe
       Paths_ExprTests
   hs-source-dirs:
       app
+  default-extensions:
+      GADTs
+      MultiParamTypeClasses
+      FlexibleInstances
+      PolyKinds
+      DataKinds
+      RankNTypes
+      NoMonomorphismRestriction
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       ExprTests
@@ -55,6 +87,14 @@ test-suite ExprTests-test
       Paths_ExprTests
   hs-source-dirs:
       test
+  default-extensions:
+      GADTs
+      MultiParamTypeClasses
+      FlexibleInstances
+      PolyKinds
+      DataKinds
+      RankNTypes
+      NoMonomorphismRestriction
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       ExprTests
