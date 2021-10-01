@@ -6,7 +6,7 @@ import Lang.Exprs
 import Lang.ModelExpr
 
 {------------------------------------------------------------------------------
-| Potential alternative expression containers
+| Potential expression containers
 |
 | ( Mostly not important, done purely for learning and experimentation. )
 ------------------------------------------------------------------------------}
@@ -42,17 +42,23 @@ instance HasUID (EMExprBox et t) where
 {------------------------------------------------------------------------------
 | We need a very generic typeclass to represent "grabbing typed expressions from things"
 | (similar to existing "DefiningExpr" typeclass in Drasil) 
+|
+| We want it to be generic because "definition"s should be able to swap out the language
+| used to define them. Through later restricting the languages used, we can have clusters
+| of definitions by Exprs, ModelExprs, Literals (potential move from literals to new
+| a new Literals-only language), etc.
 ------------------------------------------------------------------------------}
 
-{-
-
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+{-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ~ First attempt at creating the typeclass didn't pan out so well..
+~
+~ Check out the code first!
+~ 
 ~ Since the `ek` didn't appear on the input of `defnExpr`, it was causing ambiguous type errors in usage!
 ~ Those errors resulted in us requiring a __manually written monomorphic type signature for all usages__!
 ~ I don't think this would work out too well for us, but I think it's suboptimal because we might need to
 ~ often enable AllowAmbiguousTypes to make things work (though I'll need to double check later).
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 class DefiningExpr t ek et where
     defnExpr :: t et -> ek et
@@ -67,12 +73,11 @@ instance DefiningExpr (EMExprBox et) et t where
     defnExpr = _emExpr
 -}
 
-{-
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+{-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ~ Second attempt works a lot better because we also require the inputted thing to contain
 ~ but its not without its caveats...
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
--}
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-}
 class DefiningExpr2 t ek et where
     defnExpr2 :: t ek et -> ek et
 
@@ -104,7 +109,7 @@ class DefiningExpr3 t e where -- This is just the 'getter' part of the Lens. We 
 --     defnExpr3 = _emExpr
 --
 -- so,
-
+--
 -- we need a new box where the type is purely up to the writer
 data ExprBox' et = ExprBox' {
         _ebExpr' :: et,
@@ -162,3 +167,9 @@ p'' = ExprBox' {
 r''' :: String
 r''' = thirdF p''
 -- ..it looks like they work well.
+
+{-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~ Conclusion: DefiningExpr3 (the original style) is the best working one.
+~
+~ TODO: Justify.
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-}

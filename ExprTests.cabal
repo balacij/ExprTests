@@ -30,7 +30,6 @@ library
       Lang.Expr
       Lang.Exprs
       Lang.GenericClasses
-      Lang.Maps
       Lang.ModelExpr
       Lang.QDefinition
       Lang.RelationConcept

@@ -11,6 +11,8 @@ import Lang.GenericClasses
 import Data.Maybe (mapMaybe)
 import qualified Data.Map as M
 
+
+-- | Standard QDefinitions
 data QDefinition e where
     -- Essentially the same, without UIDs and chunks from the original Drasil code
     QD :: String -> e -> QDefinition e
@@ -46,7 +48,7 @@ type SimpleQDef a = QDefinition (Expr a)
 qd3 :: SimpleQDef Integer
 qd3 = QD "qd3" $ int 1
 
--- but we can hide it in a wrapper type? The problem with this is that we lose "a" from everywhere
+-- but we can also hide it in a wrapper type.. The problem with this is that we lose "a" from everywhere
 -- would we be able to resolve that with Typeable usage? Seems bad to do, but it might work.
 data SimpleQDef' = forall a. SimpleQDef' (QDefinition (Expr a))
 -- It's ok, but it doesn't work very well with the typeclasses defined above. We either need alternative variants or to restrict

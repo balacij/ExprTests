@@ -88,3 +88,11 @@ cmk4 = conEquatModel qd4
 
 amk4 :: AbstractModelKind
 amk4 = absEquatModel qd4
+
+-- TODO: Figure out what's important about ModelKinds.
+-- The current ModelKinds code has a heavy amount of reuse.
+-- So, I think that we should try to return it. I think that we
+-- should try analyzing the constraints that we use on ModelKinds,
+-- and then try to make "ModelKinds" a type alias for arbitrary types that
+-- satisfy those constraints. This could be done similar to as we did in
+-- SubtypeLike.hs.

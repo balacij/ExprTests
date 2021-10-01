@@ -68,6 +68,7 @@ actOnADDsQD (DDME _ qd) _ f = f qd
 dds :: [DataDefinition]
 dds = [ dd2e, dd2me ]
 
+-- TODO: Discuss "UnTypedQDefinitionExprs"
 data UnTypedQDefinitionExprs = forall a. UTQDE (QDefinition (Expr a))
 
 instance HasUID UnTypedQDefinitionExprs where
