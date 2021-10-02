@@ -27,6 +27,7 @@ library
   exposed-modules:
       Lang.ChunkDB
       Lang.DefiningExpr
+      Lang.Display
       Lang.Expr
       Lang.Exprs
       Lang.GenericClasses

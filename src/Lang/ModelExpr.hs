@@ -50,5 +50,10 @@ instance Express ModelExpr t where
 ~
 ~ See related discussion on QDefinition.hs too.
 ~
-~ TODO: Figure out if we can get rid of type var "t" from Express.
+~ QUESTION: Figure out if we can get rid of type var "t" from Express.
+~ Well, maybe we shouldn't?
+~
+~ 'Express' is intended for describing things in our modelling language, so let's try not to get rid of "t" from Express.
+~
+~ I created a new 'DisplayLang' in Display.hs which appears to be more usable for the things that aren't typed but for which we want to "display".
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-}

@@ -12,7 +12,7 @@ import Data.Maybe (mapMaybe)
 import qualified Data.Map as M
 
 
--- | Standard QDefinitions
+-- | Standard QDefinitions (except it's missing the quantity it defines).
 data QDefinition e where
     -- Essentially the same, without UIDs and chunks from the original Drasil code
     QD :: String -> e -> QDefinition e

@@ -1,7 +1,9 @@
 module Theory.ModelKinds where
 
+import Lang.Display
 import Lang.Expr
 import Lang.Exprs
+import Lang.GenericClasses
 import Lang.ModelExpr
 import Lang.QDefinition
 
@@ -96,3 +98,16 @@ amk4 = absEquatModel qd4
 -- and then try to make "ModelKinds" a type alias for arbitrary types that
 -- satisfy those constraints. This could be done similar to as we did in
 -- SubtypeLike.hs.
+
+
+type CoreModelKinds2 e = (
+      Display e
+    , HasUID e
+    , HasShortName e
+    ) => e
+
+type ModelKinds2 = forall e. CoreModelKinds2 e
+
+type InstantiableModelKinds2 = forall e. (
+      -- TODO: constraint to restrict types to only ones that can we can directly write usable code expressions
+    ) => CoreModelKinds2 e
