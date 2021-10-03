@@ -2,3 +2,4 @@
 -- TODO: MultiDefn replica
 -- TODO: ChunkDB replica & general usage
 -- TODO: SystemInformation replica & general usage
+-- TODO: Use lhs files instead of hs files

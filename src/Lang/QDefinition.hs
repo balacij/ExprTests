@@ -3,6 +3,7 @@ module Lang.QDefinition where
 import Prelude hiding (concat)
 
 import Lang.DefiningExpr
+import Lang.Display
 import Lang.Expr
 import Lang.Exprs
 import Lang.ModelExpr
@@ -10,27 +11,42 @@ import Lang.GenericClasses
 
 import Data.Maybe (mapMaybe)
 import qualified Data.Map as M
+import Lang.GenericClasses (HasShortName)
+
+
+-- TODO: ASIDE: Should QDefinitions be moved from drasil-lang to drasil-theory?
 
 
 -- | Standard QDefinitions (except it's missing the quantity it defines).
 data QDefinition e where
-    -- Essentially the same, without UIDs and chunks from the original Drasil code
-    QD :: String -> e -> QDefinition e
-
--- TODO: ASIDE: Should QDefinitions be moved from drasil-lang to drasil-theory?
+    -- | Essentially the same, without UIDs and chunks from the original Drasil code
+    --   the second String is so that we can implement the "Short Name" typeclass
+    --   (they're usually derived from the "quantity", but we don't have those here).
+    QD :: String -> String -> e -> QDefinition e
 
 instance DefiningExpr3 QDefinition e where
-    defnExpr3 (QD _ exp) = exp
+    defnExpr3 (QD _ _ exp) = exp
+
+instance HasShortName (QDefinition e) where
+    shrtName (QD _ shrt _) = shrt
 
 instance HasUID (QDefinition e) where
-    uid (QD n _) = n
+    uid (QD n _ _) = n
+
+instance Display (QDefinition (Expr t)) where
+    display (QD _ _ e) = E e
+
+instance Display (QDefinition (ModelExpr t)) where
+    display (QD _ _ me) = ME me
+
+{- basic examples -}
 
 qd1 :: QDefinition (Expr Integer)
-qd1 = QD "qd1" $ int 1
+qd1 = QD "qd1" "shrtname" $ int 1
 
 -- qd2 :: QDefinition (Expr Integer)
 qd2 :: ExprC r => QDefinition (r Integer)  -- either of these type signatures would work
-qd2 = QD "qd2" $ int 1 `add` int 3
+qd2 = QD "qd2" "shrtname" $ int 1 `add` int 3
 
 
 {-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -46,7 +62,7 @@ qd2 = QD "qd2" $ int 1 `add` int 3
 type SimpleQDef a = QDefinition (Expr a)
 
 qd3 :: SimpleQDef Integer
-qd3 = QD "qd3" $ int 1
+qd3 = QD "qd3" "shrtname" $ int 1
 
 -- but we can also hide it in a wrapper type.. The problem with this is that we lose "a" from everywhere
 -- would we be able to resolve that with Typeable usage? Seems bad to do, but it might work.
@@ -55,7 +71,7 @@ data SimpleQDef' = forall a. SimpleQDef' (QDefinition (Expr a))
 -- usage of this to just the examples, to make them more readable?
 
 qd3' :: SimpleQDef'
-qd3' = SimpleQDef' $ QD "qd3'" $ int 1
+qd3' = SimpleQDef' $ QD "qd3'" "shrtname" $ int 1
 
 -- here it works, but it's trivial
 qd3't :: String
@@ -64,10 +80,10 @@ qd3't = case qd3' of {
         }
 
 qd4 :: ExprC r => QDefinition (r String)
-qd4 = QD "qd4" $ concat (str "q") (str "d4")
+qd4 = QD "qd4" "shrtname" $ concat (str "q") (str "d4")
 
 qd4' :: SimpleQDef'
-qd4' = SimpleQDef' $ QD "qd4'" $ concat (str "q") (str "d4'")
+qd4' = SimpleQDef' $ QD "qd4'" "shrtname" $ concat (str "q") (str "d4'")
 
 
 {-  Here's an attempt at creating an alternative version of Express that works better with SimpleQDef', but it failed.
