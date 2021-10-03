@@ -49,10 +49,15 @@ othModel = OtherModel
 | apply to each situation. I think we can still do better.
 --------------------------------------------------------------------------------}
 
--- TODO: explain how these are used
+-- | Is a model "concrete" (must be usable in code generation), 
+--   or "abstract" (can be, but not needed to, be used in code generation,
+--   but must be usable in modelling)?
 data Abstractness = Concrete | Abstract
 
--- TODO: Explain type variables of ModelKinds
+-- | `ModelKinds` is a container for describing allowed "models" inside of TMs/IMs/GDs.
+--   
+--   There are different types of them. Some may be "concrete" or "abstract",
+--   and some would contain Exprs or ModelExprs or other usable types.
 data ModelKinds (c :: Abstractness) e where
     EquationalModel :: QDefinition e     -> ModelKinds c e
     -- TODO: EquationalRealm (using ConstraintSet replica)
@@ -60,23 +65,36 @@ data ModelKinds (c :: Abstractness) e where
     DEModel         :: RelationConcept Relation -> ModelKinds Concrete e
     OtherModel      :: RelationConcept e -> ModelKinds Abstract e
 
--- TODO: Explain data containers - https://en.wikibooks.org/wiki/Haskell/Existentially_quantified_types
+-- | Container for "Concrete Model Kinds usable in code generation"
 data ConcreteModelKind = forall t. CMK (ModelKinds Concrete (Expr t))
+-- | Container for "Abstract Model Kinds"
 data AbstractModelKind = forall t. AMK (ModelKinds Abstract (ModelExpr t))
 
--- TODO: Explain smart constructors which use extra containers
+{-
+   Note that this doesn't stop us from creating "ModelKinds Concrete (ModelExpr t)", which would
+   be inadmissible. This is a rather brittle solution, with an unnecessary "Expr"-kind and
+   "Abstractness" imposition.
+
+   To make up for allowing inadmissible constructions, we are forced to force requirements in
+   the smart constructors.
+-}
+
+-- | QDefinitions with Exprs should only be used to create "Concrete Model Kinds"
 conEquatModel :: QDefinition (Expr t) -> ConcreteModelKind
 conEquatModel = CMK . EquationalModel
 
+-- | QDefinitions with ModelExprs should only be used to create "Abstract Model Kinds"
 absEquatModel :: QDefinition (ModelExpr t) -> AbstractModelKind
 absEquatModel = AMK . EquationalModel
 
+-- | Differential Models must be concrete??? Well, it seems we need another variant as well for abstract...
 deModel :: RelationConcept Relation -> ConcreteModelKind
 deModel = CMK . DEModel
 
 othModel :: RelationConcept (ModelExpr e) -> AbstractModelKind
 othModel = AMK . OtherModel
 
+{- some basic examples of usage -}
 cmk1 :: ConcreteModelKind
 cmk1 = conEquatModel qd1
 
@@ -112,10 +130,11 @@ type CoreModelKinds2 e = (
       Display e
     , HasUID e
     , HasShortName e
-    -- note: There will likely need to be at least 6 restrictions, but I doubt those will be problematic.
+    -- note: There will likely need to be at least 6 restrictions, but I doubt those extra ones will be problematic.
+    --       these ones we have here should be the minimum to showing how this would be a robust solution.
     ) => e
 
--- I think a typeclass will be what we want.
+-- I think a typeclass will work better.
 class (Display e
     ,  HasUID e
     ,  HasShortName e
@@ -125,7 +144,6 @@ class (Display e
 
 data ModelKinds2 = forall e. CoreModelKinds2' e => ModelKinds2 e
 
--- TODO: This "Instantiable"-variant is very "drasil-code" focused... I wonder if it belongs there alongside QDefinitions? I can't quite tell.
 data InstantiableModelKinds2 = forall e. (
       -- TODO: constraint to restrict types to only ones that can we can directly write usable code expressions.
       --       There's a few ways we can do this, but I'm wondering if we should be moving some components of drasil-code
@@ -140,6 +158,16 @@ class (CoreModelKinds2' e
 
 -- NOTE: we cannot create a new typeclass for "ModelKinds2" to mask the "e" parameter of the "CoreModelKinds2'"
 -- but that's fine!
+
+{- TODO: ODDITY:
+    "InstantiableModelKinds" is an oddity. It's an extension of ModelKinds that allows for the Drasil systems to recognize that
+    this particular model can (and should) be used in code generation.
+
+    Does this mean that this variant of ModelKinds should reside in `drasil-code`? Does this mean that `drasil-code-base`'s CodeExpr
+    should reside in `drasil-lang`?
+
+    Well, at the very least, depending on how we important we view modularity here, it can be a problem.
+-}
 
 -- Instantiating CoreModelKinds2' for Simple QDefinitions
 instance CoreModelKinds2' (QDefinition (Expr t)) where
@@ -157,6 +185,9 @@ Pros:
     - Modular + Extensible
     - No duplicate code
     - Type variables make sense (pro against the previous 2 gens of ModelKinds)
+        - No "Abstractness (Concrete/Abstract)"
+        - No forcing things to use "Exprs" or "ModelExprs" at all! This should help a lot for some mathematical models
+          which wouldn't be always be modelled by "expressions" but by, perhaps, coefficients, etc.
     - With this variant, no smart constructors are really needed because it's just a series of constraints
       imposed on things. Though, having a small simple smart constructor doesn't hurt, I just don't see how
       it could be used(?).
