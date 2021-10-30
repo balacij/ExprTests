@@ -11,7 +11,7 @@ import Lang.GenericClasses
 
 import Data.Maybe (mapMaybe)
 import qualified Data.Map as M
-import Lang.GenericClasses (HasShortName)
+import Lang.GenericClasses (HasShortName, HasUID, DrasilDumpable)
 
 
 -- TODO: ASIDE: Should QDefinitions be moved from drasil-lang to drasil-theory?
@@ -69,6 +69,12 @@ qd3 = QD "qd3" "shrtname" $ int 1
 data SimpleQDef' = forall a. SimpleQDef' (QDefinition (Expr a))
 -- It's ok, but it doesn't work very well with the typeclasses defined above. We either need alternative variants or to restrict
 -- usage of this to just the examples, to make them more readable?
+
+instance HasUID SimpleQDef' where
+    uid (SimpleQDef' qd) = uid qd
+
+instance DrasilDumpable SimpleQDef' where
+    dump qd = "{ uid = '" ++ uid qd ++ "'; expr = '" ++ simpleQDef'ToStr qd ++ "'}"
 
 qd3' :: SimpleQDef'
 qd3' = SimpleQDef' $ QD "qd3'" "shrtname" $ int 1
