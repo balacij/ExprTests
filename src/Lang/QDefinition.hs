@@ -74,7 +74,7 @@ instance HasUID SimpleQDef' where
     uid (SimpleQDef' qd) = uid qd
 
 instance DrasilDumpable SimpleQDef' where
-    dump qd = "{ uid = '" ++ uid qd ++ "'; expr = '" ++ simpleQDef'ToStr qd ++ "'}"
+    dump qd = "SimpleQDef' { uid = '" ++ uid qd ++ "'; expr = '" ++ simpleQDef'ToStr qd ++ "'}"
 
 qd3' :: SimpleQDef'
 qd3' = SimpleQDef' $ QD "qd3'" "shrtname" $ int 1
