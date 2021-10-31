@@ -10,6 +10,7 @@ import qualified Data.Map as M
 import Data.Typeable (Typeable, cast, TypeRep, typeRep, typeOf)
 import Data.Maybe (mapMaybe)
 import Data.Proxy
+import Data.Bifunctor
 
 type JunkInformation = String
 data Junk = Junk UID JunkInformation
@@ -20,11 +21,15 @@ instance DrasilDumpable Junk where dump (Junk u info) = "Junk { uid = '" ++ u ++
 
 data Chunk where
     CHUNK :: (HasUID t, DrasilDumpable t, Typeable t) => t -> Chunk
+    deriving Typeable
 
 instance HasUID         Chunk where uid  (CHUNK t) = uid t
 instance DrasilDumpable Chunk where dump (CHUNK t) = dump t
 
 type ChunkDB = M.Map UID Chunk
+
+chunksToChunkDB :: (HasUID t, Typeable t, DrasilDumpable t) => [t] -> ChunkDB
+chunksToChunkDB = M.fromList . map (\x -> (uid x, CHUNK x))
 
 registerChunk :: (HasUID t, Typeable t, DrasilDumpable t) => t -> ChunkDB -> ChunkDB
 registerChunk c = M.insert (uid c) (CHUNK c)
@@ -42,25 +47,28 @@ retrieveChunksByType cdb tr = relevantChunks
         -- Here, if I replace `if typeOf c == tr then cast c else Nothing` with just `cast c`, the below discussion of 0 becomes nil, but then it allows too much...
         -- I thought this equivalence checking would be useless, but it turns out it wasnt!
 
-type ChunksByTypeRep = M.Map TypeRep ChunkDB
+retrieveChunksByTypeInChunkBox :: ChunkDB -> TypeRep -> [Chunk]
+retrieveChunksByTypeInChunkBox cdb tr = relevantChunks
+    where
+        allChunks = M.toList cdb
+        relevantChunks = mapMaybe (\(_, it@(CHUNK c)) -> if typeOf c == tr then Just it else Nothing) allChunks
 
-{- -- TODO: This is an attempt to dump all chunks into a single type rep map, but it's not type checking yet!
+type ChunksByTypeRep = M.Map TypeRep ChunkDB -- aside: The ``value'' here could also be changed to contain precalculated views of the inner ChunkDB
 
 dumpChunkDBToTypeRepMap :: ChunkDB -> ChunksByTypeRep
 dumpChunkDBToTypeRepMap cdb = allRegistered
     where
+        -- gather a list of registered types
         knownChunkTypes :: [TypeRep]
         knownChunkTypes = nub . map (typeOf . snd) $ M.toList cdb
 
-        pair :: x -> y -> (x, y)
-        pair = (,) -- for readability...
+        -- gather types with a list of all registered chunks that are of that type
+        chunksWithTypes :: [(TypeRep, [Chunk])]
+        chunksWithTypes = map (\x -> (,) x $ retrieveChunksByTypeInChunkBox cdb x) knownChunkTypes
 
-        -- chunksWithTypes :: [(TypeRep, Chunk)]  -- This is the type signature I want, but it's not working, I don't understand why however...
-        chunksWithTypes = map (\x -> pair x $ map CHUNK $ retrieveChunksByType cdb x) knownChunkTypes
-
+        -- reconcile everything found, into a single ChunksByTypeRep map
         allRegistered :: ChunksByTypeRep
-        allRegistered = _ -- TODO: Final step, merge the `chunksWithTypes` into a single map
--}
+        allRegistered = M.fromList $ map (second chunksToChunkDB) chunksWithTypes
 
 type ChunkDB' = (ChunkDB, ChunksByTypeRep)
 
@@ -117,9 +125,9 @@ cdbTest = do
     putStrLn $ maybeQDToStr failedRetrieval
     putStrLn ""
 
-    let pureJunk = Junk "" "" -- TODO: I wonder if we can remove this?
-    let foundJunk = retrieveChunksByType cdb2 (typeOf pureJunk) :: [Junk] -- This explicit type signature is required! How can I get rid of needing pureJunk however?
-    let foundJunk' = retrieveChunksByType cdb2 (typeRep Junk) :: [Junk] -- Using this gives 0!
+    let junkInst = Junk "" ""
+    let foundJunk = retrieveChunksByType cdb2 (typeOf junkInst) :: [Junk] -- This explicit type signature is required! How can I get rid of needing pureJunk however?
+    let foundJunk' = retrieveChunksByType cdb2 (typeRep Junk) :: [Junk] -- Using this gives 0 when we have the above `typeOf c == tr` check
     let foundJunk'' = retrieveChunksByType cdb2 (typeRep (Proxy @Junk)) :: [Junk]
     putStrLn $ "Junk found: " ++ show (length foundJunk)
     putStrLn $ "Junk' found: " ++ show (length foundJunk')
@@ -134,10 +142,10 @@ cdbTest = do
     putStrLn $ infoDump foundQDs
     putStrLn "---- { FOUND QDs DUMP  END  } ----"
 
-    print (typeOf pureJunk)       -- "Junk"
+    print (typeOf junkInst)       -- "Junk"
     print (typeRep Junk)          -- "[Char] -> Junk" (seemingly missing a parameter?)
     print (typeRep (Proxy @Junk)) -- "Junk"
 
-    print (typeOf pureJunk == typeRep Junk)          -- False
-    print (typeOf pureJunk == typeRep (Proxy @Junk)) -- True
+    print (typeOf junkInst == typeRep Junk)          -- False
+    print (typeOf junkInst == typeRep (Proxy @Junk)) -- True
     print (typeRep Junk    == typeRep (Proxy @Junk)) -- False
