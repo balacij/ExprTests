@@ -21,7 +21,6 @@ instance DrasilDumpable Junk where dump (Junk u info) = "Junk { uid = '" ++ u ++
 
 data Chunk where
     CHUNK :: (HasUID t, DrasilDumpable t, Typeable t) => t -> Chunk
-    deriving Typeable
 
 instance HasUID         Chunk where uid  (CHUNK t) = uid t
 instance DrasilDumpable Chunk where dump (CHUNK t) = dump t
@@ -44,6 +43,11 @@ retrieveChunksByType cdb tr = relevantChunks
     where
         allChunks = M.toList cdb
         relevantChunks = mapMaybe (\(_, CHUNK c) -> if typeOf c == tr then cast c else Nothing) allChunks
+        -- ALTERNATIVE: 
+        -- relevantChunks = mapMaybe (\(_, CHUNK c) -> cast c) allChunks
+        --
+        -- This alternative appears to often work better, but I might be misunderstanding why. 
+        --
         -- Here, if I replace `if typeOf c == tr then cast c else Nothing` with just `cast c`, the below discussion of 0 becomes nil, but then it allows too much...
         -- I thought this equivalence checking would be useless, but it turns out it wasnt!
 
