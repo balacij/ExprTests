@@ -38,11 +38,11 @@ retrieveChunk cdb u = do
     (CHUNK r) <- M.lookup u cdb
     cast r
 
-retrieveChunksByType :: (HasUID t, DrasilDumpable t, Typeable t) => ChunkDB -> TypeRep -> [t]
-retrieveChunksByType cdb tr = relevantChunks
+retrieveChunksByType :: (HasUID t, DrasilDumpable t, Typeable t) => ChunkDB -> [t]
+retrieveChunksByType cdb = relevantChunks
     where
         allChunks = M.toList cdb
-        relevantChunks = mapMaybe (\(_, CHUNK c) -> if typeOf c == tr then cast c else Nothing) allChunks
+        relevantChunks = mapMaybe (\(_, CHUNK c) -> cast c) allChunks
         -- ALTERNATIVE: 
         -- relevantChunks = mapMaybe (\(_, CHUNK c) -> cast c) allChunks
         --
@@ -130,17 +130,13 @@ cdbTest = do
     putStrLn ""
 
     let junkInst = Junk "" ""
-    let foundJunk = retrieveChunksByType cdb2 (typeOf junkInst) :: [Junk] -- This explicit type signature is required! How can I get rid of needing pureJunk however?
-    let foundJunk' = retrieveChunksByType cdb2 (typeRep Junk) :: [Junk] -- Using this gives 0 when we have the above `typeOf c == tr` check
-    let foundJunk'' = retrieveChunksByType cdb2 (typeRep (Proxy @Junk)) :: [Junk]
+    let foundJunk = retrieveChunksByType cdb2 :: [Junk] -- This explicit type signature is required! How can I get rid of needing pureJunk however?
     putStrLn $ "Junk found: " ++ show (length foundJunk)
-    putStrLn $ "Junk' found: " ++ show (length foundJunk')
-    putStrLn $ "Junk'' found: " ++ show (length foundJunk')
     putStrLn "---- { FOUND JUNK DUMP START } ----"
     putStrLn $ infoDump foundJunk
     putStrLn "---- { FOUND JUNK DUMP  END  } ----\n"
 
-    let foundQDs = retrieveChunksByType cdb2 (typeOf qd4') :: [SimpleQDef']
+    let foundQDs = retrieveChunksByType cdb2 :: [SimpleQDef']
     putStrLn $ "QDs found: " ++ show (length foundQDs)
     putStrLn "---- { FOUND QDs DUMP START } ----"
     putStrLn $ infoDump foundQDs
