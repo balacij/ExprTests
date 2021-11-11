@@ -46,4 +46,17 @@ TODO: so, for functions, it looks like we need:
 -- ChunkDB change could never have come sooner!
 -- in fact, it looks like I need to be able to put arbitrary data into ChunkDBs in order to have typed variables, or else many typed lists will break homogeneity rule!!!!
 
+
+Right, now I remember why I was struggling to type things
+- want to type Exprs?
+    - lists unknown handling
+    - functions
+    - variables
+- want to type variables? need to type:
+    - quantities
+- want to type anything? need to break homogeneity rules
+    - but wait! SystemInformation uses flat lists for everything!!!
+
+---- oddly, being able to place typed things into arbitrary "chunk" boxes and collect them for efficient usage in the system is quite important to my thesis!
+
 -}
