@@ -37,3 +37,13 @@ class ModelExprC r where
 instance ModelExprC ModelExpr where
     extraConstructor l r = M.ExtraConstructor l r
 
+
+{-
+
+TODO: so, for functions, it looks like we need:
+-- the datatypes carry UIDs and type information, imposed by the TTF encodings (which would ask for the function for enforcement)
+-- Quantities would likely need to become typed
+-- ChunkDB change could never have come sooner!
+-- in fact, it looks like I need to be able to put arbitrary data into ChunkDBs in order to have typed variables, or else many typed lists will break homogeneity rule!!!!
+
+-}

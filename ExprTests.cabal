@@ -28,6 +28,7 @@ library
       Lang.ChunkDB
       Lang.DefiningExpr
       Lang.Display
+      Lang.Encodings
       Lang.Expr
       Lang.Exprs
       Lang.Functions
