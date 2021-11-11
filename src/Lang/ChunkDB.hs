@@ -153,3 +153,13 @@ cdbTest = do
     print (typeOf junkInst == typeRep Junk)          -- False
     print (typeOf junkInst == typeRep (Proxy @Junk)) -- True
     print (typeRep Junk    == typeRep (Proxy @Junk)) -- False
+
+
+{-
+
+TODO:
+- need a templatehaskell function which can generate functions for chunks automatically:
+    - ability to grab a well-typed "thing" from a ChunkDB with a specific type
+    - ability to grab a list of well-typed "things" fromm a ChunkDB with a specific type
+
+-}
