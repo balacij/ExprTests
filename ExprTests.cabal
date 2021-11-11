@@ -30,6 +30,7 @@ library
       Lang.Display
       Lang.Expr
       Lang.Exprs
+      Lang.Functions
       Lang.GenericClasses
       Lang.ModelExpr
       Lang.QDefinition
@@ -42,6 +43,7 @@ library
       Theory.InstanceModel
       Theory.ModelKinds
       Theory.TheoryModel
+      Theory.TheoryPresentations
   other-modules:
       Paths_ExprTests
   hs-source-dirs:
