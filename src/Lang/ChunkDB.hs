@@ -7,8 +7,8 @@ import Lang.QDefinition
 
 import Data.List (intercalate, nub)
 import qualified Data.Map as M
-import Data.Typeable (Typeable, cast, TypeRep, typeRep, typeOf)
-import Data.Maybe (mapMaybe)
+import Data.Typeable (Typeable, cast, TypeRep, typeRep, typeOf, typeRepArgs, typeRepTyCon)
+import Data.Maybe (mapMaybe, fromMaybe)
 import Data.Proxy
 import Data.Bifunctor
 
@@ -24,6 +24,9 @@ data Chunk where
 
 instance HasUID         Chunk where uid  (CHUNK t) = uid t
 instance DrasilDumpable Chunk where dump (CHUNK t) = dump t
+
+chunkType :: Chunk -> TypeRep
+chunkType (CHUNK c) = typeOf c
 
 type ChunkDB = M.Map UID Chunk
 
@@ -64,7 +67,7 @@ dumpChunkDBToTypeRepMap cdb = allRegistered
     where
         -- gather a list of registered types
         knownChunkTypes :: [TypeRep]
-        knownChunkTypes = nub . map (typeOf . snd) $ M.toList cdb
+        knownChunkTypes = nub . map (chunkType . snd) $ M.toList cdb
 
         -- gather types with a list of all registered chunks that are of that type
         chunksWithTypes :: [(TypeRep, [Chunk])]
@@ -94,7 +97,7 @@ retrieveChunk' (cdb, _) u = do
     (CHUNK r) <- M.lookup u cdb
     cast r
 
-retrieveChunksByType' :: Typeable a => ChunkDB' -> TypeRep -> [a]
+retrieveChunksByType' :: (DrasilDumpable a, Typeable a) => ChunkDB' -> TypeRep -> [a]
 retrieveChunksByType' (_, trcdb) tr = maybe [] (mapMaybe ((\(CHUNK c) -> cast c) . snd) . M.toList) (M.lookup tr trcdb)
 
 cdb1 :: ChunkDB
@@ -112,6 +115,17 @@ maybeQDToStr = maybe "No QD" simpleQDef'ToStr
 
 infoDump :: (DrasilDumpable t) => [t] -> String
 infoDump = intercalate "\n" . map dump
+
+data JunkT a = JunkT UID a
+    deriving Typeable
+
+instance HasUID         (JunkT a) where uid (JunkT u _)     = u
+instance Show a => DrasilDumpable (JunkT a) where dump (JunkT u info) = "JunkT { uid = '" ++ u ++ "' ; info = '" ++ show info ++ "'"
+
+cdb3 :: ChunkDB
+cdb3 = registerChunk (JunkT "JunkT1" 1 :: JunkT Int)
+    $ registerChunk (JunkT "JunkT2" "thing")
+    cdb2
 
 cdbTest :: IO ()
 cdbTest = do
@@ -150,6 +164,33 @@ cdbTest = do
     print (typeOf junkInst == typeRep (Proxy @Junk)) -- True
     print (typeRep Junk    == typeRep (Proxy @Junk)) -- False
 
+
+    let e = dumpChunkDBToTypeRepMap cdb3
+    let cdb'' = (cdb3, e)
+    let foundJunkTs = retrieveChunksByType cdb3 :: [JunkT Int]
+    print $ infoDump foundJunkTs
+    let f = M.lookup (typeRep (Proxy @(JunkT Int))) e
+    print $ M.size e
+    print $ M.keys e
+    print $ maybe 0 M.size f
+
+    -- Use typeRepTyCon to find all `JunkT`s, ignoring 
+    let junkTTypeCon = typeRepTyCon $ typeRep (Proxy @(JunkT Int))
+    print junkTTypeCon -- This gives 'JunkT'
+    print $ typeRepArgs $ typeRep (Proxy @(JunkT Int)) -- This gives '[Int]'
+    let junkTTypes = filter (\x -> typeRepTyCon x == junkTTypeCon) $ M.keys e
+    print $ length junkTTypes -- This prints '2', which makes sense (and is good)!
+    let allJunkTs = concatMap (\x -> maybe [] M.elems $ M.lookup x e) junkTTypes -- all `JunkT`s, ignoring their type arguments :)
+    putStrLn $ infoDump allJunkTs
+    {- output of last line:
+        JunkT { uid = 'JunkT2' ; info = '"thing"'
+        JunkT { uid = 'JunkT1' ; info = '1'
+    -}
+
+
+-- TODO: I wonder if we can put the `JunkT` Chunks above (e.g., allJunkTs) inside of `Container1 JunkT`s so that we can witness it's type again
+data Container1 tr where
+    Container1 :: tr b -> Container1 tr
 
 {-
 
